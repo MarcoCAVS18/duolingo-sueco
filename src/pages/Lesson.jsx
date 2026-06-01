@@ -420,15 +420,22 @@ function MatchExercise({ ex, onResult, onNext, accent }) {
     }
   }
 
+  // Al tocar cualquier ficha suena la palabra EN SUECO (en la columna española
+  // suena el sueco de ese mismo par, para reforzar la pronunciación).
+  const sayPair = (id) => {
+    haptics.light()
+    const p = ex.pairs.find((x) => x.id === id)
+    if (p) speak(p.sv)
+  }
   const onLeft = (id) => {
     if (matched[id] || done) return
-    haptics.light()
+    sayPair(id)
     setLeftSel(id)
     if (rightSel != null) tryMatch(id, rightSel)
   }
   const onRight = (id) => {
     if (matched[id] || done) return
-    haptics.light()
+    sayPair(id)
     setRightSel(id)
     if (leftSel != null) tryMatch(leftSel, id)
   }

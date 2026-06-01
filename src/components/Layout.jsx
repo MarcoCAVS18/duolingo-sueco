@@ -59,6 +59,10 @@ export default function Layout() {
             <span className="text-xl">📖</span>
             Guía
           </NavLink>
+          <NavLink to="/tarjetas" className={navItem}>
+            <span className="text-xl">🃏</span>
+            Tarjetas
+          </NavLink>
           <NavLink to="/perfil" className={navItem}>
             <span className="text-xl">🦉</span>
             Perfil

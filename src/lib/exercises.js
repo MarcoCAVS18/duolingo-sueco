@@ -6,7 +6,7 @@
 //   · choice-es-sv : ves el español, eliges el sueco
 //   · build        : ordena las palabras para formar la frase en sueco
 // ──────────────────────────────────────────────────────────────────────────
-import { allItems } from '../data/lessons'
+import { units } from '../data/lessons'
 
 function shuffle(arr) {
   const a = [...arr]
@@ -21,18 +21,26 @@ function sample(arr, n, exclude) {
   return shuffle(arr.filter((x) => x !== exclude)).slice(0, n)
 }
 
-// Distractores en español tomados de todo el curso (más realistas)
-function distractorsEs(correct, n) {
-  const pool = [...new Set(allItems.map((i) => i.es))].filter((x) => x !== correct)
-  return sample(pool, n)
-}
-function distractorsSv(correct, n) {
-  const pool = [...new Set(allItems.map((i) => i.sv))].filter((x) => x !== correct)
-  return sample(pool, n)
+// Pozo ACUMULATIVO: solo las palabras de esta unidad y de las ANTERIORES.
+// Así los distractores refuerzan lo ya aprendido y nunca muestran palabras
+// de categorías que todavía no viste.
+function learnedPool(unit) {
+  const idx = units.findIndex((u) => u.id === unit.id)
+  const upTo = idx >= 0 ? units.slice(0, idx + 1) : units
+  return upTo.flatMap((u) => u.items)
 }
 
-function makeChoiceSvEs(item) {
-  const options = shuffle([item.es, ...distractorsEs(item.es, 3)])
+function distractorsEs(correct, n, pool) {
+  const opts = [...new Set(pool.map((i) => i.es))].filter((x) => x !== correct)
+  return sample(opts, n)
+}
+function distractorsSv(correct, n, pool) {
+  const opts = [...new Set(pool.map((i) => i.sv))].filter((x) => x !== correct)
+  return sample(opts, n)
+}
+
+function makeChoiceSvEs(item, pool) {
+  const options = shuffle([item.es, ...distractorsEs(item.es, 3, pool)])
   return {
     type: 'choice-sv-es',
     prompt: '¿Qué significa en español?',
@@ -43,8 +51,8 @@ function makeChoiceSvEs(item) {
   }
 }
 
-function makeChoiceEsSv(item) {
-  const options = shuffle([item.sv, ...distractorsSv(item.sv, 3)])
+function makeChoiceEsSv(item, pool) {
+  const options = shuffle([item.sv, ...distractorsSv(item.sv, 3, pool)])
   return {
     type: 'choice-es-sv',
     prompt: 'Selecciona la traducción al sueco',
@@ -55,9 +63,9 @@ function makeChoiceEsSv(item) {
   }
 }
 
-function makeListen(item) {
+function makeListen(item, pool) {
   // Escuchas el sueco (audio) y eliges el significado en español.
-  const options = shuffle([item.es, ...distractorsEs(item.es, 3)])
+  const options = shuffle([item.es, ...distractorsEs(item.es, 3, pool)])
   return {
     type: 'listen',
     prompt: 'Escucha y elige el significado',
@@ -78,11 +86,11 @@ function makeMatch(items) {
   }
 }
 
-function makeBuild(item) {
+function makeBuild(item, pool) {
   const correctTokens = item.sv.split(' ')
-  // Añadimos 2 palabras señuelo de otras frases
+  // Palabras señuelo tomadas de frases ya aprendidas.
   const extraPool = shuffle(
-    allItems
+    pool
       .flatMap((i) => i.sv.split(' '))
       .filter((w) => !correctTokens.includes(w) && w.length > 1)
   ).slice(0, 2)
@@ -97,6 +105,7 @@ function makeBuild(item) {
 
 export function buildLesson(unit) {
   const items = shuffle(unit.items)
+  const pool = learnedPool(unit) // esta unidad + todas las anteriores
   const exercises = []
 
   // Ejercicio de emparejar al inicio, con palabras cortas (1 sola palabra).
@@ -108,13 +117,13 @@ export function buildLesson(unit) {
   items.forEach((item, idx) => {
     const isPhrase = item.sv.includes(' ')
     if (isPhrase && idx % 3 === 0) {
-      exercises.push(makeBuild(item))
+      exercises.push(makeBuild(item, pool))
     } else if (idx % 4 === 1) {
-      exercises.push(makeListen(item))
+      exercises.push(makeListen(item, pool))
     } else if (idx % 2 === 0) {
-      exercises.push(makeChoiceSvEs(item))
+      exercises.push(makeChoiceSvEs(item, pool))
     } else {
-      exercises.push(makeChoiceEsSv(item))
+      exercises.push(makeChoiceEsSv(item, pool))
     }
   })
   return exercises
