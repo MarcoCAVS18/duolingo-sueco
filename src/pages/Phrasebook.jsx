@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { units } from '../data/lessons'
 import SpeakButton from '../components/SpeakButton.jsx'
+import { speak } from '../lib/speech'
+import { haptics } from '../lib/haptics'
 
 // Guía de consulta rápida: todo el vocabulario y frases por unidad.
 export default function Phrasebook() {
@@ -38,8 +40,32 @@ export default function Phrasebook() {
                   <div key={it.sv} className="flex items-start justify-between gap-3 px-4 py-3">
                     <div className="flex items-start gap-2 min-w-0">
                       <SpeakButton text={it.sv} size="sm" className="mt-0.5" />
+                      {it.sv.includes(' ') && (
+                        <button
+                          type="button"
+                          onClick={() => { haptics.light(); speak(it.sv, { rate: 0.5 }) }}
+                          aria-label="Escuchar más despacio"
+                          title="Más despacio (0.5x)"
+                          className="shrink-0 mt-0.5 w-8 h-8 inline-flex items-center justify-center rounded-xl text-white bg-duo-purple text-base active:translate-y-0.5"
+                          style={{ boxShadow: '0 3px 0 0 #b15ef0' }}
+                        >
+                          🐢
+                        </button>
+                      )}
                       <div className="min-w-0">
-                        <div className="font-display font-extrabold text-duo-ink">{it.sv}</div>
+                        {/* Palabras tocables: toca una palabra para oírla suelta */}
+                        <div className="flex flex-wrap gap-x-1 gap-y-0.5">
+                          {it.sv.split(' ').map((w, i) => (
+                            <button
+                              key={`${w}-${i}`}
+                              type="button"
+                              onClick={() => { haptics.light(); speak(w.replace(/[.,!?¿¡]/g, '')) }}
+                              className="font-display font-extrabold text-duo-ink rounded hover:bg-blue-50 active:bg-blue-100 px-0.5"
+                            >
+                              {w}
+                            </button>
+                          ))}
+                        </div>
                         {it.hint && <div className="text-xs text-duo-gray mt-0.5">{it.hint}</div>}
                       </div>
                     </div>

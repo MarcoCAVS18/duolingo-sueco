@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { units } from '../data/lessons'
+import { units, sections } from '../data/lessons'
 import { useProgress } from '../context/ProgressContext.jsx'
 
 function UnitNode({ unit, index, status, score, onClick }) {
@@ -41,13 +41,15 @@ function UnitNode({ unit, index, status, score, onClick }) {
 
 export default function Home() {
   const navigate = useNavigate()
-  const { progress } = useProgress()
+  const { progress, profile } = useProgress()
 
-  // Una unidad se desbloquea cuando la anterior está completada.
-  const statusFor = (index) => {
-    if (index === 0) return progress.completedUnits[units[0].id]?.done ? 'done' : 'open'
-    const prevDone = progress.completedUnits[units[index - 1].id]?.done
-    const thisDone = progress.completedUnits[units[index].id]?.done
+  // Índice global de cada unidad (para desbloqueo secuencial y zigzag).
+  const globalIndex = (unitId) => units.findIndex((u) => u.id === unitId)
+
+  const statusFor = (i) => {
+    if (i === 0) return progress.completedUnits[units[0].id]?.done ? 'done' : 'open'
+    const prevDone = progress.completedUnits[units[i - 1].id]?.done
+    const thisDone = progress.completedUnits[units[i].id]?.done
     if (thisDone) return 'done'
     return prevDone ? 'open' : 'locked'
   }
@@ -56,31 +58,44 @@ export default function Home() {
     <div>
       <section className="card mb-8 bg-gradient-to-br from-green-50 to-white">
         <h1 className="font-display font-extrabold text-2xl text-duo-ink">
-          Bienvenido/a, futuro camarero/a 🦉
+          ¡Hola, {profile?.name}! 🦉
         </h1>
         <p className="text-duo-gray mt-1">
-          Aprende el sueco que necesitas para servir en{' '}
-          <strong>Strömstad Spa &amp; Resort</strong>: el menú real, los alérgenos y
-          las frases para atender a cada mesa.
+          Aprende paso a paso el sueco para servir en{' '}
+          <strong>Strömstad Spa &amp; Resort</strong>. Empieza por las palabras y avanza
+          hasta las frases y el menú completo.
         </p>
       </section>
 
-      <div className="flex flex-col items-center gap-8">
-        {units.map((unit, i) => {
-          const status = statusFor(i)
-          const score = progress.completedUnits[unit.id]?.best ?? 0
-          return (
-            <UnitNode
-              key={unit.id}
-              unit={unit}
-              index={i}
-              status={status}
-              score={score}
-              onClick={() => navigate(`/leccion/${unit.id}`)}
-            />
-          )
-        })}
-      </div>
+      {sections.map((section) => (
+        <div key={section.title} className="mb-10">
+          <div className="sticky top-16 z-[5] flex items-center gap-3 mb-6">
+            <div className="h-0.5 flex-1 bg-duo-line" />
+            <span className="font-display font-extrabold text-xs uppercase tracking-wide text-duo-gray bg-duo-bg px-3 py-1 rounded-full border-2 border-duo-line">
+              {section.title}
+            </span>
+            <div className="h-0.5 flex-1 bg-duo-line" />
+          </div>
+
+          <div className="flex flex-col items-center gap-8">
+            {section.units.map((unit) => {
+              const gi = globalIndex(unit.id)
+              const status = statusFor(gi)
+              const score = progress.completedUnits[unit.id]?.best ?? 0
+              return (
+                <UnitNode
+                  key={unit.id}
+                  unit={unit}
+                  index={gi}
+                  status={status}
+                  score={score}
+                  onClick={() => navigate(`/leccion/${unit.id}`)}
+                />
+              )
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }

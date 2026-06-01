@@ -3,8 +3,9 @@ import { useNavigate, useParams, Link } from 'react-router-dom'
 import { units } from '../data/lessons'
 import { buildLesson } from '../lib/exercises'
 import { useProgress } from '../context/ProgressContext.jsx'
-import SpeakButton from '../components/SpeakButton.jsx'
+import TappablePhrase from '../components/TappablePhrase.jsx'
 import { speak } from '../lib/speech'
+import { haptics } from '../lib/haptics'
 
 function shuffleArr(arr) {
   const a = [...arr]
@@ -45,9 +46,11 @@ export default function Lesson() {
 
   const handleResult = (ok) => {
     if (ok) {
+      haptics.success()
       setCorrectCount((c) => c + 1)
       addXp(10)
     } else {
+      haptics.error()
       loseHeart()
     }
   }
@@ -147,12 +150,13 @@ function ChoiceExercise({ ex, onResult, onNext, accent }) {
       <h2 className="font-display font-extrabold text-xl text-duo-ink">{ex.prompt}</h2>
 
       <div className="card flex flex-col items-center gap-3 py-8">
-        <div className="flex items-center gap-3">
+        {promptInSwedish ? (
+          <TappablePhrase text={ex.word} />
+        ) : (
           <div className="text-2xl font-display font-extrabold text-duo-ink text-center">
             {ex.word}
           </div>
-          {promptInSwedish && <SpeakButton text={ex.word} />}
-        </div>
+        )}
         {ex.hint && <div className="text-sm text-duo-gray text-center px-4">💡 {ex.hint}</div>}
       </div>
 
@@ -165,7 +169,10 @@ function ChoiceExercise({ ex, onResult, onNext, accent }) {
             <button
               key={opt}
               disabled={checked}
-              onClick={() => setSelected(opt)}
+              onClick={() => {
+                haptics.light()
+                setSelected(opt)
+              }}
               className={`card text-left font-bold transition-colors ${
                 showCorrect
                   ? 'border-duo-green bg-green-50 text-duo-greenDark'
@@ -280,18 +287,30 @@ function ListenExercise({ ex, onResult, onNext, accent }) {
     <div className="flex flex-col gap-5">
       <h2 className="font-display font-extrabold text-xl text-duo-ink">{ex.prompt}</h2>
 
-      <div className="card flex flex-col items-center gap-3 py-8">
-        <button
-          type="button"
-          onClick={() => speak(ex.audio)}
-          aria-label="Reproducir audio"
-          className="w-24 h-24 rounded-2xl bg-duo-blue text-white text-5xl flex items-center justify-center active:translate-y-1"
-          style={{ boxShadow: '0 5px 0 0 #1899d6' }}
-        >
-          🔊
-        </button>
+      <div className="card flex flex-col items-center gap-4 py-8">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => { haptics.light(); speak(ex.audio) }}
+            aria-label="Reproducir audio"
+            className="w-24 h-24 rounded-2xl bg-duo-blue text-white text-5xl flex items-center justify-center active:translate-y-1"
+            style={{ boxShadow: '0 5px 0 0 #1899d6' }}
+          >
+            🔊
+          </button>
+          <button
+            type="button"
+            onClick={() => { haptics.light(); speak(ex.audio, { rate: 0.5 }) }}
+            aria-label="Escuchar más despacio"
+            title="Escuchar más despacio (0.5x)"
+            className="w-16 h-16 rounded-2xl bg-duo-purple text-white text-3xl flex items-center justify-center active:translate-y-1"
+            style={{ boxShadow: '0 5px 0 0 #b15ef0' }}
+          >
+            🐢
+          </button>
+        </div>
         {checked && (
-          <div className="text-lg font-display font-extrabold text-duo-ink">{ex.reveal}</div>
+          <TappablePhrase text={ex.reveal} size="md" />
         )}
       </div>
 
@@ -304,7 +323,10 @@ function ListenExercise({ ex, onResult, onNext, accent }) {
             <button
               key={opt}
               disabled={checked}
-              onClick={() => setSelected(opt)}
+              onClick={() => {
+                haptics.light()
+                setSelected(opt)
+              }}
               className={`card text-left font-bold transition-colors ${
                 showCorrect
                   ? 'border-duo-green bg-green-50 text-duo-greenDark'
@@ -349,6 +371,7 @@ function MatchExercise({ ex, onResult, onNext, accent }) {
 
   const tryMatch = (lId, rId) => {
     if (lId === rId) {
+      haptics.success()
       const nm = { ...matched, [lId]: true }
       setMatched(nm)
       setLeftSel(null)
@@ -359,6 +382,7 @@ function MatchExercise({ ex, onResult, onNext, accent }) {
         onResult(true)
       }
     } else {
+      haptics.error()
       setWrong(`${lId}-${rId}`)
       setTimeout(() => setWrong(null), 500)
       setTimeout(() => {
@@ -370,11 +394,13 @@ function MatchExercise({ ex, onResult, onNext, accent }) {
 
   const onLeft = (id) => {
     if (matched[id] || done) return
+    haptics.light()
     setLeftSel(id)
     if (rightSel != null) tryMatch(id, rightSel)
   }
   const onRight = (id) => {
     if (matched[id] || done) return
+    haptics.light()
     setRightSel(id)
     if (leftSel != null) tryMatch(leftSel, id)
   }
@@ -418,7 +444,11 @@ function MatchExercise({ ex, onResult, onNext, accent }) {
       </div>
 
       {done && (
-        <button onClick={onNext} className="btn-green w-full" style={{ background: accent }}>
+        <button
+          onClick={() => { haptics.tap(); onNext() }}
+          className="btn-green w-full"
+          style={{ background: accent }}
+        >
           Continuar
         </button>
       )}
@@ -438,23 +468,27 @@ function Footer({ checked, isCorrect, answer, answerInSwedish, disabled, onCheck
     <div className="mt-2">
       {checked && (
         <div
-          className={`rounded-2xl p-4 mb-3 font-bold flex items-center justify-between gap-3 ${
+          className={`rounded-2xl p-4 mb-3 font-bold ${
             isCorrect ? 'bg-green-50 text-duo-greenDark' : 'bg-red-50 text-duo-redDark'
           }`}
         >
-          <span>
-            {isCorrect ? '¡Correcto! 🎉' : (
-              <>
-                Respuesta correcta: <span className="underline">{answer}</span>
-              </>
-            )}
-          </span>
-          {answerInSwedish && <SpeakButton text={answer} size="sm" />}
+          {isCorrect ? (
+            '¡Correcto! 🎉'
+          ) : (
+            <div className="flex flex-col gap-2">
+              <span>Respuesta correcta:</span>
+              {answerInSwedish ? (
+                <TappablePhrase text={answer} size="md" />
+              ) : (
+                <span className="underline">{answer}</span>
+              )}
+            </div>
+          )}
         </div>
       )}
       {!checked ? (
         <button
-          onClick={onCheck}
+          onClick={() => { haptics.tap(); onCheck() }}
           disabled={disabled}
           className="btn-green w-full disabled:opacity-40"
           style={{ background: accent }}
@@ -462,7 +496,11 @@ function Footer({ checked, isCorrect, answer, answerInSwedish, disabled, onCheck
           Comprobar
         </button>
       ) : (
-        <button onClick={onNext} className="btn-green w-full" style={{ background: accent }}>
+        <button
+          onClick={() => { haptics.tap(); onNext() }}
+          className="btn-green w-full"
+          style={{ background: accent }}
+        >
           Continuar
         </button>
       )}
@@ -495,8 +533,8 @@ function FinishScreen({ unit, pct, xp, onHome, onRetry }) {
       </div>
 
       <div className="flex flex-col gap-3 w-full max-w-xs">
-        <button onClick={onHome} className="btn-green w-full">Ir al mapa</button>
-        <button onClick={onRetry} className="btn-gray w-full">Repetir</button>
+        <button onClick={() => { haptics.tap(); onHome() }} className="btn-green w-full">Ir al mapa</button>
+        <button onClick={() => { haptics.tap(); onRetry() }} className="btn-gray w-full">Repetir</button>
       </div>
     </div>
   )
