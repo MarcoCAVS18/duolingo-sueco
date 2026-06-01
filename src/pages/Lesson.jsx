@@ -21,7 +21,11 @@ export default function Lesson() {
   const { addXp, completeUnit, loseHeart, refillHearts } = useProgress()
 
   const unit = units.find((u) => u.id === unitId)
-  const exercises = useMemo(() => (unit ? buildLesson(unit) : []), [unit])
+  // `attempt` cambia en cada repetición → se vuelve a barajar TODO (orden de
+  // preguntas, tipo de ejercicio, opciones y distractores). Nunca memorizas
+  // las respuestas por posición.
+  const [attempt, setAttempt] = useState(0)
+  const exercises = useMemo(() => (unit ? buildLesson(unit) : []), [unit, attempt])
 
   const [idx, setIdx] = useState(0)
   const [correctCount, setCorrectCount] = useState(0)
@@ -68,7 +72,10 @@ export default function Lesson() {
         onHome={() => navigate('/')}
         onRetry={() => {
           refillHearts()
-          navigate(0)
+          setIdx(0)
+          setCorrectCount(0)
+          setFinished(false)
+          setAttempt((a) => a + 1) // regenera la tanda barajada de nuevo
         }}
       />
     )
