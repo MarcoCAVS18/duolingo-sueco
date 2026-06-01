@@ -1,4 +1,4 @@
-import { speak, isSpeechSupported } from '../lib/speech'
+import { speak, speakSlow, isSpeechSupported } from '../lib/speech'
 import { haptics } from '../lib/haptics'
 import SpeakButton from './SpeakButton.jsx'
 
@@ -41,7 +41,7 @@ export default function TappablePhrase({ text, size = 'lg', controls = true }) {
               type="button"
               onClick={() => {
                 haptics.light()
-                speak(text, { rate: 0.5 })
+                speakSlow(text)
               }}
               aria-label="Escuchar más despacio"
               title="Escuchar más despacio (0.5x)"

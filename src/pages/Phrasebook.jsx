@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { units } from '../data/lessons'
 import SpeakButton from '../components/SpeakButton.jsx'
-import { speak } from '../lib/speech'
+import { speak, speakSlow } from '../lib/speech'
 import { haptics } from '../lib/haptics'
 
 // Guía de consulta rápida: todo el vocabulario y frases por unidad.
@@ -43,7 +43,7 @@ export default function Phrasebook() {
                       {it.sv.includes(' ') && (
                         <button
                           type="button"
-                          onClick={() => { haptics.light(); speak(it.sv, { rate: 0.5 }) }}
+                          onClick={() => { haptics.light(); speakSlow(it.sv) }}
                           aria-label="Escuchar más despacio"
                           title="Más despacio (0.5x)"
                           className="shrink-0 mt-0.5 w-8 h-8 inline-flex items-center justify-center rounded-xl text-white bg-duo-purple text-base active:translate-y-0.5"

@@ -44,18 +44,39 @@ export function hasSwedishVoice() {
   return Boolean(pickSwedishVoice())
 }
 
-// Reproduce `text` en sueco. Debe llamarse desde un gesto del usuario en iOS.
-export function speak(text, { rate = 0.9 } = {}) {
-  if (!isSpeechSupported() || !text) return
-  const synth = window.speechSynthesis
-  synth.cancel() // corta lo que estuviera sonando
+function makeUtterance(text, rate) {
   const utter = new SpeechSynthesisUtterance(text)
   const voice = pickSwedishVoice()
   if (voice) utter.voice = voice
   utter.lang = voice?.lang || 'sv-SE'
-  utter.rate = rate // un poco más lento para aprender
+  utter.rate = rate
   utter.pitch = 1
-  synth.speak(utter)
+  return utter
+}
+
+// Reproduce `text` en sueco a velocidad normal.
+// Debe llamarse desde un gesto del usuario en iOS.
+export function speak(text, { rate = 1 } = {}) {
+  if (!isSpeechSupported() || !text) return
+  const synth = window.speechSynthesis
+  synth.cancel() // corta lo que estuviera sonando
+  synth.speak(makeUtterance(text, rate))
+}
+
+// Reproduce MÁS DESPACIO. Como muchos motores (Safari/iOS) ignoran un `rate`
+// bajo, leemos palabra por palabra ENCOLADAS: el motor las reproduce una tras
+// otra con pausas naturales → suena claramente más lento y segmentado.
+export function speakSlow(text) {
+  if (!isSpeechSupported() || !text) return
+  const synth = window.speechSynthesis
+  synth.cancel()
+  const words = String(text).split(/\s+/).filter(Boolean)
+  if (words.length <= 1) {
+    // Una sola palabra: la repetimos con rate bajo (y si lo ignora, igual suena).
+    synth.speak(makeUtterance(text, 0.5))
+    return
+  }
+  words.forEach((w) => synth.speak(makeUtterance(w, 0.7)))
 }
 
 export { voicesLoaded }

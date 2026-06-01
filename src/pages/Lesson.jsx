@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { units } from '../data/lessons'
 import { buildLesson } from '../lib/exercises'
 import { useProgress } from '../context/ProgressContext.jsx'
 import TappablePhrase from '../components/TappablePhrase.jsx'
-import { speak } from '../lib/speech'
+import { speak, speakSlow } from '../lib/speech'
 import { haptics } from '../lib/haptics'
 
 function shuffleArr(arr) {
@@ -16,21 +16,42 @@ function shuffleArr(arr) {
   return a
 }
 
+// Vuelve a encolar un ejercicio fallado (reaparece al final), rebarajando
+// sus opciones para que no se acierte de memoria por posición.
+function requeue(ex) {
+  if (ex.type === 'build') return { ...ex, isRetry: true, tokens: shuffleArr(ex.tokens) }
+  if (ex.options) return { ...ex, isRetry: true, options: shuffleArr(ex.options) }
+  return { ...ex, isRetry: true }
+}
+
 export default function Lesson() {
   const { unitId } = useParams()
   const navigate = useNavigate()
   const { addXp, completeUnit, loseHeart, refillHearts } = useProgress()
 
   const unit = units.find((u) => u.id === unitId)
-  // `attempt` cambia en cada repetición → se vuelve a barajar TODO (orden de
-  // preguntas, tipo de ejercicio, opciones y distractores). Nunca memorizas
-  // las respuestas por posición.
+  // `attempt` cambia en cada repetición → se vuelve a barajar TODO.
   const [attempt, setAttempt] = useState(0)
   const exercises = useMemo(() => (unit ? buildLesson(unit) : []), [unit, attempt])
 
-  const [idx, setIdx] = useState(0)
-  const [correctCount, setCorrectCount] = useState(0)
+  // `queue` es una cola dinámica: si fallas un ejercicio, se reencola al final
+  // y vuelve a aparecer (como Duolingo). `pos` es el ejercicio actual.
+  const [queue, setQueue] = useState(() => exercises)
+  const [pos, setPos] = useState(0)
+  const [firstTryCorrect, setFirstTryCorrect] = useState(0) // aciertos a la primera (para la nota)
+  const [sessionXp, setSessionXp] = useState(0)
   const [finished, setFinished] = useState(false)
+  const initialTotal = useRef(exercises.length)
+
+  // Al regenerar la tanda (montaje o repetición) reiniciamos la cola.
+  useEffect(() => {
+    setQueue(exercises)
+    setPos(0)
+    setFirstTryCorrect(0)
+    setSessionXp(0)
+    setFinished(false)
+    initialTotal.current = exercises.length
+  }, [exercises])
 
   if (!unit) {
     return (
@@ -41,54 +62,55 @@ export default function Lesson() {
     )
   }
 
-  const total = exercises.length
-  const ex = exercises[idx]
+  const ex = queue[pos]
 
   const handleResult = (ok) => {
     if (ok) {
       haptics.success()
-      setCorrectCount((c) => c + 1)
+      if (!ex.isRetry) setFirstTryCorrect((c) => c + 1)
+      setSessionXp((x) => x + 10)
       addXp(10)
     } else {
       haptics.error()
       loseHeart()
+      // Reencolar la fallada al final para repetirla.
+      setQueue((q) => [...q, requeue(ex)])
     }
   }
 
   const next = () => {
-    if (idx + 1 >= total) {
-      const pct = Math.round((correctCount / total) * 100)
+    if (pos + 1 >= queue.length) {
+      const pct = Math.round((firstTryCorrect / Math.max(1, initialTotal.current)) * 100)
       completeUnit(unit.id, pct)
       setFinished(true)
     } else {
-      setIdx((i) => i + 1)
+      setPos((p) => p + 1)
     }
   }
 
   if (finished) {
-    const pct = Math.round((correctCount / total) * 100)
+    const pct = Math.round((firstTryCorrect / Math.max(1, initialTotal.current)) * 100)
     return (
       <FinishScreen
         unit={unit}
         pct={pct}
-        xp={correctCount * 10}
+        xp={sessionXp}
         onHome={() => navigate('/')}
         onRetry={() => {
           refillHearts()
-          setIdx(0)
-          setCorrectCount(0)
-          setFinished(false)
-          setAttempt((a) => a + 1) // regenera la tanda barajada de nuevo
+          setAttempt((a) => a + 1) // regenera la tanda; el efecto reinicia la cola
         }}
       />
     )
   }
 
+  if (!ex) return null
+
   return (
     <div className="min-h-full flex flex-col bg-white">
-      <ProgressBar unit={unit} idx={idx} total={total} onQuit={() => navigate('/')} />
+      <ProgressBar unit={unit} idx={pos} total={queue.length} onQuit={() => navigate('/')} />
       <div className="flex-1 w-full max-w-2xl mx-auto px-4 py-6">
-        <Exercise key={idx} ex={ex} onResult={handleResult} onNext={next} accent={unit.color} />
+        <Exercise key={pos} ex={ex} onResult={handleResult} onNext={next} accent={unit.color} />
       </div>
     </div>
   )
@@ -300,7 +322,7 @@ function ListenExercise({ ex, onResult, onNext, accent }) {
           </button>
           <button
             type="button"
-            onClick={() => { haptics.light(); speak(ex.audio, { rate: 0.5 }) }}
+            onClick={() => { haptics.light(); speakSlow(ex.audio) }}
             aria-label="Escuchar más despacio"
             title="Escuchar más despacio (0.5x)"
             className="w-16 h-16 rounded-2xl bg-duo-purple text-white text-3xl flex items-center justify-center active:translate-y-1"

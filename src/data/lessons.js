@@ -12,7 +12,7 @@
 //  El motor genera los ejercicios (elegir, escuchar, emparejar, ordenar).
 // ──────────────────────────────────────────────────────────────────────────
 
-export const units = [
+const baseUnits = [
   // ════════════════ SECCIÓN 1 · Primeras palabras ════════════════
   {
     id: 'saludos',
@@ -486,15 +486,50 @@ export const units = [
   },
 ]
 
-// Lista plana de todos los pares (repaso global y banco de distractores)
-export const allItems = units.flatMap((u) =>
+// Banco de distractores y guía: solo las unidades de aprendizaje reales.
+export const allItems = baseUnits.flatMap((u) =>
   u.items.map((it) => ({ ...it, unitId: u.id, unitTitle: u.title }))
 )
 
-// Unidades agrupadas por sección (para el mapa de aprendizaje)
-export const sections = units.reduce((acc, u) => {
+// ──────────────────────────────────────────────────────────────────────────
+//  Agrupamos por sección y, al final de cada sección con varias unidades,
+//  añadimos una lección de REPASO ⭐ con LO MÁS IMPORTANTE de esa sección
+//  (no todo: tomamos los primeros ítems de cada unidad, que son los clave).
+// ──────────────────────────────────────────────────────────────────────────
+function pickKeyItems(sectionUnits) {
+  // 2 ítems clave por unidad (los primeros = los más representativos)…
+  const picked = sectionUnits.flatMap((u) => u.items.slice(0, 2))
+  // …y como mucho 10 para que el repaso sea ágil, no exhaustivo.
+  return picked.slice(0, 10)
+}
+
+const grouped = baseUnits.reduce((acc, u) => {
   const key = u.section || 'Otros'
-  if (!acc.find((s) => s.title === key)) acc.push({ title: key, units: [] })
-  acc.find((s) => s.title === key).units.push(u)
+  let sec = acc.find((s) => s.title === key)
+  if (!sec) {
+    sec = { title: key, units: [] }
+    acc.push(sec)
+  }
+  sec.units.push(u)
   return acc
 }, [])
+
+// Insertamos la unidad de repaso en cada sección (si tiene 2+ lecciones).
+grouped.forEach((sec, i) => {
+  if (sec.units.length < 2) return
+  sec.units.push({
+    id: `repaso-${i + 1}`,
+    section: sec.title,
+    isReview: true,
+    title: 'Repaso',
+    subtitle: 'Lo más importante ⭐',
+    color: '#ffc800',
+    icon: '⭐',
+    items: pickKeyItems(sec.units),
+  })
+})
+
+export const sections = grouped
+
+// Orden maestro de unidades (lecciones + repasos), para desbloqueo y mapa.
+export const units = grouped.flatMap((s) => s.units)
