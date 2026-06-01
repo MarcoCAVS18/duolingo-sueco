@@ -1,0 +1,23 @@
+rules_version = '2';
+
+// ──────────────────────────────────────────────────────────────────────────
+//  Reglas de seguridad de Firestore — Menyspråket
+//  La app usa login ANÓNIMO y dos perfiles compartidos: "belu" y "marco".
+//  El progreso de cada perfil vive en: progress/{perfil}
+//  Solo usuarios autenticados (anónimos incluidos) pueden leer/escribir,
+//  y únicamente en los documentos de esos dos perfiles.
+// ──────────────────────────────────────────────────────────────────────────
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /progress/{profileId} {
+      allow read, write: if request.auth != null
+                         && profileId in ['belu', 'marco'];
+    }
+
+    // Todo lo demás queda bloqueado por defecto.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

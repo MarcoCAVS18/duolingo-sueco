@@ -1,0 +1,57 @@
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: 'Nunito', system-ui, sans-serif;
+  background: #f7f7f7;
+  color: #3c3c3c;
+  -webkit-font-smoothing: antialiased;
+  /* Evita el rebote/scroll horizontal en iOS y respeta el notch lateral */
+  overflow-x: hidden;
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* En modo PWA (standalone) ocupamos toda la pantalla */
+@media (display-mode: standalone) {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+}
+
+@layer components {
+  .btn-3d {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl font-display font-extrabold uppercase tracking-wide
+           text-white px-5 py-3 transition-transform active:translate-y-1 active:shadow-none select-none;
+    box-shadow: 0 4px 0 0 rgba(0, 0, 0, 0.2);
+  }
+  .btn-green {
+    @apply btn-3d bg-duo-green;
+  }
+  .btn-blue {
+    @apply btn-3d bg-duo-blue;
+  }
+  .btn-gray {
+    @apply btn-3d bg-white text-duo-gray;
+    box-shadow: 0 2px 0 0 #e5e5e5, 0 0 0 2px #e5e5e5;
+  }
+  .card {
+    @apply rounded-2xl bg-white border-2 border-duo-line p-4;
+  }
+}

@@ -1,0 +1,14 @@
+# Configuración de despliegue en Netlify
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Redirección SPA: cualquier ruta cae en index.html para que
+# React Router funcione y el build no rompa con 404 en rutas internas.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
