@@ -233,13 +233,19 @@ function BuildExercise({ ex, onResult, onNext, accent }) {
   const built = line.join(' ')
   const isCorrect = built === ex.answer
 
+  const say = (w) => {
+    haptics.light()
+    speak(String(w).replace(/[.,!?¿¡]/g, '')) // suena la palabra tocada
+  }
   const pick = (i) => {
     if (checked) return
+    say(bank[i])
     setLine([...line, bank[i]])
     setBank(bank.filter((_, j) => j !== i))
   }
   const unpick = (i) => {
     if (checked) return
+    say(line[i])
     setBank([...bank, line[i]])
     setLine(line.filter((_, j) => j !== i))
   }
